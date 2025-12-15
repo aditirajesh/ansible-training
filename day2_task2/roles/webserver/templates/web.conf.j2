@@ -1,0 +1,45 @@
+# Managed by Ansible: {{ env_name }}
+
+{% if use_ssl | bool %}
+# PROD: HTTP -> HTTPS redirect
+<VirtualHost *:80>
+    ServerName {{ server_name }}
+
+    RewriteEngine On
+    RewriteCond %{HTTPS} off
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+</VirtualHost>
+
+# PROD: HTTPS vhost
+<VirtualHost *:443>
+    ServerName {{ server_name }}
+    DocumentRoot {{ web_root }}
+
+    <Directory {{ web_root }}>
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    SSLEngine on
+    SSLCertificateFile {{ ssl_cert_path }}
+    SSLCertificateKeyFile {{ ssl_key_path }}
+
+    ErrorLog ${APACHE_LOG_DIR}/aditi-{{ env_name }}-error.log
+    CustomLog ${APACHE_LOG_DIR}/aditi-{{ env_name }}-access.log combined
+</VirtualHost>
+
+{% else %}
+# DEV: HTTP on custom port
+<VirtualHost *:{{ http_port }}>
+    ServerName {{ server_name }}
+    DocumentRoot {{ web_root }}
+
+    <Directory {{ web_root }}>
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/aditi-{{ env_name }}-error.log
+    CustomLog ${APACHE_LOG_DIR}/aditi-{{ env_name }}-access.log combined
+</VirtualHost>
+{% endif %}

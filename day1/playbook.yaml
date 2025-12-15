@@ -1,0 +1,150 @@
+- name: AWS EC2 Instance Playbook
+  hosts: localhost
+  gather_facts: yes
+
+  collections:
+    - amazon.aws
+
+  vars:
+    project_name: aditi-ec2-ansible
+    ami_id: ami-068c0051b15cdb816   # Amazon Linux 2
+    instance_type: t3.micro
+
+    # Existing infrastructure
+    vpc_id: vpc-03e74e41a77961c2c
+    subnet_public_id: subnet-003b4cbcf929663ff
+    subnet_private_id: subnet-0185fa3935dde4100
+    aws_region: us-east-1
+
+  tasks:
+
+  - name: Show Playbook Options
+    ansible.builtin.debug:
+      msg:
+        - "project_name: {{ project_name }}"
+        - "ami_id: {{ ami_id }}"
+        - "instance_type: {{ instance_type }}"
+        - "vpc_id: {{ vpc_id }}"
+        - "subnet_public_id: {{ subnet_public_id }}"
+        - "subnet_private_id: {{ subnet_private_id }}"
+
+  - name: Create SSH Key Pair
+    amazon.aws.ec2_key:
+      name: "{{ project_name }}.public_key"
+      state: present
+      region: "{{ aws_region }}"
+    register: key_pair
+
+  - name: Save Private Key Locally
+    when: key_pair.changed
+    ansible.builtin.copy:
+      content: "{{ key_pair.key.private_key }}"
+      dest: "{{ playbook_dir }}/{{ project_name }}.private_key.pem"
+      mode: "0400"
+
+  - name: Create Security Group for Nginx (public)
+    amazon.aws.ec2_group:
+      name: aditi-ansible-nginx-sg
+      region: "{{ aws_region }}"
+      description: Nginx public SG
+      vpc_id: "{{ vpc_id }}"
+      state: present
+      rules:
+        - proto: tcp
+          from_port: 22
+          to_port: 22
+          cidr_ip: 0.0.0.0/0
+        - proto: tcp
+          from_port: 80
+          to_port: 80
+          cidr_ip: 0.0.0.0/0
+      rules_egress:
+        - proto: all
+          cidr_ip: 0.0.0.0/0
+      tags:
+        Project: "{{ project_name }}"
+        StartDate: "{{ ansible_date_time.date }}"
+    register: sg_nginx
+
+  - name: Create Security Group for MySQL (private)
+    amazon.aws.ec2_group:
+      name: aditi-ansible-mysql-sg
+      region: "{{ aws_region }}"
+      description: MySQL private SG
+      vpc_id: "{{ vpc_id }}"
+      state: present
+      rules:
+        - proto: tcp
+          from_port: 22
+          to_port: 22
+          cidr_ip: 10.0.0.0/16      # ideally, only internal/certain SGs
+        - proto: tcp
+          from_port: 3306
+          to_port: 3306
+          cidr_ip: 10.0.0.0/16      # or reference nginx SG instead
+      rules_egress:
+        - proto: all
+          cidr_ip: 0.0.0.0/0
+      tags:
+        Project: "{{ project_name }}"
+        StartDate: "{{ ansible_date_time.date }}"
+    register: sg_mysql
+
+  - name: Create EC2 Instance - Nginx (public)
+    amazon.aws.ec2_instance:
+      name: aditi-nginx
+      state: present
+      region: "{{ aws_region }}"
+      image_id: "{{ ami_id }}"
+      instance_type: "{{ instance_type | default('t2.micro') }}"
+      vpc_subnet_id: "{{ subnet_public_id }}"
+      security_group: "{{ sg_nginx.group_name }}"
+      key_name: "{{ project_name }}.public_key"
+      count: 1
+      wait: yes
+      network: 
+        assign_public_ip: yes
+      user_data: |
+        #!/bin/bash
+        set -eux
+        dnf update -y
+        dnf install -y nginx
+        systemctl enable nginx
+        systemctl start nginx
+      tags:
+        Project: "{{ project_name }}"
+        StartDate: "{{ ansible_date_time.date }}"
+    register: ec2_nginx
+
+  - name: Create EC2 Instance - MySQL (private)
+    amazon.aws.ec2_instance:
+      name: aditi-mysql
+      state: present
+      region: "{{ aws_region }}"
+      image_id: "{{ ami_id }}"
+      instance_type: "{{ instance_type | default('t2.micro') }}"
+      vpc_subnet_id: "{{ subnet_private_id }}"
+      security_group: "{{ sg_mysql.group_name }}"
+      key_name: "{{ project_name }}.public_key"
+      count: 1
+      wait: yes
+      network:
+        assign_public_ip: no
+      user_data: |
+        #!/bin/bash
+        dnf -y update
+        dnf -y install mariadb105-server
+        systemctl enable mariadb
+        systemctl start mariadb
+      tags:
+        Project: "{{ project_name }}"
+        StartDate: "{{ ansible_date_time.date }}"
+    register: ec2_mysql
+
+  - name: Show Nginx instance SSH info
+    ansible.builtin.debug:
+      msg:
+        - "Nginx Public IP: {{ ec2_nginx.instances[0].public_ip_address }}"
+        - "ssh -i ./{{ project_name }}.private_key.pem ec2-user@{{ ec2_nginx.instances[0].public_ip_address }}"
+        - "ssh -i ./{{ project_name }}.private_key.pem ec2-user@{{ ec2_nginx.instances[0].public_dns_name }}"
+

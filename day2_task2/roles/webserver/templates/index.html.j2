@@ -1,0 +1,10 @@
+<!doctype html>
+<html>
+  <body>
+    <h1>{{ env_name | upper }} ✅</h1>
+    <p>server_name: {{ server_name }}</p>
+    <p>web_root: {{ web_root }}</p>
+    <p>use_ssl: {{ use_ssl }}</p>
+    <p>http port: {{ http_port | default(port, true) }}</p>
+  </body>
+</html>

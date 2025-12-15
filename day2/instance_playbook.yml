@@ -1,0 +1,47 @@
+# configure_instances.yml
+- name: Install and configure Apache on EC2 instances
+  hosts: aws_ec2
+  become: yes
+
+  tasks:
+    - name: Update yum cache
+      yum:
+        update_cache: yes
+      tags:
+        - update
+
+    - name: Install Apache (httpd)
+      yum:
+        name: httpd
+        state: present
+      tags: 
+        - install
+
+    - name: Ensure web root exists
+      file:
+        path: /var/www/html
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      tags: 
+        - config
+
+    - name: Create index.html
+      copy:
+        dest: /var/www/html/index.html
+        content: |
+          <h1>Hello world from ansible playbook!</h1>
+        owner: root
+        group: root
+        mode: "0644"
+      tags: 
+        - config
+
+    - name: Start & enable httpd
+      systemd:
+        name: httpd
+        state: started
+        enabled: yes
+      tags:
+        - start

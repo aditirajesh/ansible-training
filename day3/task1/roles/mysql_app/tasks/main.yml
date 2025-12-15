@@ -1,0 +1,79 @@
+- name: Install Python MySQL driver (AL2023)
+  become: true
+  dnf:
+    name:
+      - python3-pip
+    state: present
+
+- name: Install PyMySQL via pip (reliable across AL2023 repos)
+  become: true
+  pip:
+    name: pymysql
+    executable: pip3
+
+- name: Detect MariaDB socket path
+  become: true
+  stat:
+    path: "{{ item }}"
+  loop: "{{ mysql_socket_candidates }}"
+  register: socket_stats
+
+- name: Set mysql_login_unix_socket fact
+  set_fact:
+    mysql_login_unix_socket: >-
+      {{
+        (socket_stats.results
+          | selectattr('stat.exists', 'equalto', true)
+          | map(attribute='item')
+          | list
+          | first)
+      }}
+
+- name: Fail if no MariaDB socket found
+  fail:
+    msg: "Could not find MariaDB socket. Checked: {{ mysql_socket_candidates }}. Verify mariadb is running and socket path."
+  when: mysql_login_unix_socket is not defined or mysql_login_unix_socket | length == 0
+
+- name: Create application database
+  become: true
+  community.mysql.mysql_db:
+    name: "{{ db_name }}"
+    state: present
+    login_user: "{{ mysql_login_user }}"
+    login_unix_socket: "{{ mysql_login_unix_socket }}"
+
+- name: Create DB user with password (from vault)
+  become: true
+  community.mysql.mysql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    host: "%"
+    state: present
+    login_user: "{{ mysql_login_user }}"
+    login_unix_socket: "{{ mysql_login_unix_socket }}"
+
+- name: Grant privileges to user on the database
+  become: true
+  community.mysql.mysql_user:
+    name: "{{ db_user }}"
+    host: "%"
+    priv: "{{ db_name }}.*:ALL"
+    append_privs: true
+    state: present
+    login_user: "{{ mysql_login_user }}"
+    login_unix_socket: "{{ mysql_login_unix_socket }}"
+
+- name: Create table inside the DB
+  become: true
+  community.mysql.mysql_query:
+    login_db: "{{ db_name }}"
+    query: |
+      CREATE TABLE IF NOT EXISTS {{ table_name }} (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(120) UNIQUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    login_user: "{{ mysql_login_user }}"
+    login_unix_socket: "{{ mysql_login_unix_socket }}"
+

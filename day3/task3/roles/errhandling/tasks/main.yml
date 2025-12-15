@@ -1,0 +1,41 @@
+- name: Deploy application configuration
+  block:
+ 
+    - name: Ensure /etc/myapp directory exists
+      file:
+        path: /etc/myapp
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+ 
+    - name: Copy app configuration
+      copy:
+        src: apps.conf
+        dest: /etc/myapp/app.conf
+        owner: root
+        group: root
+        mode: '0644'
+ 
+  rescue:
+ 
+    - name: Log configuration deployment failure
+      debug:
+        msg: "Failed to deploy app.conf to /etc/myapp"
+ 
+    - name: Clean /etc/myapp directory after failure
+      file:
+        path: /etc/myapp
+        state: absent
+ 
+  always:
+ 
+    - name: Ensure /etc/myapp directory exists after cleanup
+      file:
+        path: /etc/myapp
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+ 
+  tags: app_config

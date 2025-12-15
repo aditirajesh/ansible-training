@@ -1,0 +1,81 @@
+- name: Create group 'dev'
+  ansible.builtin.group:
+    name: "{{ dev_group }}"
+    state: present
+
+- name: Create users user1,user2,user3
+  ansible.builtin.user:
+    name: "{{ item }}"
+    state: present
+    create_home: true
+  loop: "{{ users_list }}"
+  register: user_create_results
+  until: user_create_results is succeeded
+  retries: 3
+  delay: 2
+
+- name: Add user1 to sudo group
+  ansible.builtin.user:
+    name: user1
+    groups: "{{ sudo_group }}"
+    append: true
+  when: item == "user1"
+  loop: "{{ users_list }}"
+
+- name: Add user2 and user3 to dev group
+  ansible.builtin.user:
+    name: "{{ item }}"
+    groups: "{{ dev_group }}"
+    append: true
+  when: item in ["user2", "user3"]
+  loop: "{{ users_list }}"
+
+- name: Read local public key
+  ansible.builtin.set_fact:
+    local_public_key: "{{ lookup('file', local_public_key_path) }}"
+
+
+# Ensure .ssh directory exists with correct permissions for user2/user3
+- name: Ensure ~/.ssh exists for user2 and user3
+  ansible.builtin.file:
+    path: "/home/{{ item }}/.ssh"
+    state: directory
+    owner: "{{ item }}"
+    group: "{{ item }}"
+    mode: "0700"
+  loop:
+    - user2
+    - user3
+
+- name: Install public key into authorized_keys for user2 and user3
+  ansible.posix.authorized_key:
+    user: "{{ item }}"
+    state: present
+    key: "{{ local_public_key }}"
+    path: "/home/{{ item }}/.ssh/authorized_keys"
+    manage_dir: false
+  loop:
+    - user2
+    - user3
+
+
+- name: Ensure authorized_keys permissions for user2 and user3
+  ansible.builtin.file:
+    path: "/home/{{ item }}/.ssh/authorized_keys"
+    owner: "{{ item }}"
+    group: "{{ item }}"
+    mode: "0600"
+  loop:
+    - user2
+    - user3
+
+# Home directory setup (explicit ownership + permissions)
+- name: Ensure home directory ownership and permissions
+  ansible.builtin.file:
+    path: "/home/{{ item }}"
+    state: directory
+    owner: "{{ item }}"
+    group: "{{ item }}"
+    mode: "0755"
+  loop: "{{ users_list }}"
+

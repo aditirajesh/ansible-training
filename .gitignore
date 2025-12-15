@@ -1,0 +1,7 @@
+my-venv
+day2-env
+task2-env
+*.pem
+*key
+*.pub
+user_access_key 

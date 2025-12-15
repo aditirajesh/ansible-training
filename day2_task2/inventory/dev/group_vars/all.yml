@@ -1,0 +1,12 @@
+env_name: dev
+http_port: 8080
+web_root: /var/www/dev
+server_name: 3.238.68.89
+use_ssl: false
+
+web_package: apache2
+web_service: apache2
+apache_sites_available: /etc/apache2/sites-available
+apache_sites_enabled: /etc/apache2/sites-enabled
+ssl_cert_path: /etc/ssl/certs/aditi-selfsigned.crt
+ssl_key_path: /etc/ssl/private/aditi-selfsigned.key

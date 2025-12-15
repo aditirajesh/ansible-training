@@ -1,0 +1,12 @@
+env_name: prod
+http_port: 80
+web_root: /var/www/prod
+server_name: 3.238.68.89
+use_ssl: true
+
+web_package: apache2
+web_service: apache2
+apache_sites_available: /etc/apache2/sites-available
+apache_sites_enabled: /etc/apache2/sites-enabled
+ssl_cert_path: /etc/ssl/certs/aditi-selfsigned.crt
+ssl_key_path: /etc/ssl/private/aditi-selfsigned.key

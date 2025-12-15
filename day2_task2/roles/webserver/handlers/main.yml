@@ -1,0 +1,7 @@
+# ...existing code...
+- name: ReloadApache
+  service:
+      name: apache2
+      state: restarted
+  become: true
+# ...existing code...

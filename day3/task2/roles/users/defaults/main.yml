@@ -1,0 +1,10 @@
+users_list:
+  - user1
+  - user2
+  - user3
+
+dev_group: dev
+sudo_group: sudo
+ssh_key_name: id_rsa
+local_public_key_path: "/Users/aditirajesh/Desktop/Training/ansible/day3/task2/user_access_key.pub"
+

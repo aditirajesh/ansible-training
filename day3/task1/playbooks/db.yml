@@ -1,0 +1,7 @@
+- name: Configure MariaDB (db, user, grants, table)
+  hosts: db
+  become: true
+  vars_files:
+    - ../secrets.yml
+  roles:
+    - mysql_app

@@ -1,0 +1,96 @@
+- name: Update apt cache
+  apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install Apache
+  apt:
+    name: "{{ web_package }}"
+    state: present
+
+- name: Ensure Apache is enabled and running
+  service:
+    name: "{{ web_service }}"
+    state: started
+    enabled: true
+
+- name: Debug env vars (temporary)
+  debug:
+    msg:
+      - "group_names={{ group_names }}"
+      - "env_name={{ env_name | default('UNDEFINED') }}"
+      - "use_ssl={{ use_ssl | default('UNDEFINED') }}"
+      - "http_port={{ http_port | default('UNDEFINED') }}"
+
+# Ensure required Listen ports exist without overwriting system files
+- name: Ensure Apache listens on port 80 (always)
+  lineinfile:
+    path: /etc/apache2/ports.conf
+    regexp: '^Listen 80$'
+    line: 'Listen 80'
+  notify: ReloadApache
+
+- name: Ensure Apache listens on dev port 8080 (when dev)
+  lineinfile:
+    path: /etc/apache2/ports.conf
+    regexp: '^Listen 8080$'
+    line: 'Listen 8080'
+  when: env_name == "dev"
+  notify: ReloadApache
+
+
+- name: Enable required apache modules for SSL/redirect (prod)
+  command: "a2enmod {{ item }}"
+  args:
+    creates: "/etc/apache2/mods-enabled/{{ item }}.load"
+  loop:
+    - ssl
+    - rewrite
+  when: use_ssl | bool
+  notify: ReloadApache
+
+- name: Create web root
+  file:
+    path: "{{ web_root }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: "0755"
+
+- name: Deploy index.html (same template for dev/prod)
+  template:
+    src: index.html.j2
+    dest: "{{ web_root }}/index.html"
+    owner: www-data
+    group: www-data
+    mode: "0644"
+
+- name: Create self-signed cert for SSL (only if missing)
+  command: >
+    openssl req -x509 -nodes -days 825 -newkey rsa:2048
+    -keyout {{ ssl_key_path }}
+    -out {{ ssl_cert_path }}
+    -subj "/C=IN/ST=Kerala/L=Kochi/O=Training/OU=Web/CN={{ server_name }}"
+  args:
+    creates: "{{ ssl_cert_path }}"
+  when: use_ssl | bool
+
+- name: Deploy vhost config (Jinja)
+  template:
+    src: web.conf.j2
+    dest: "{{ apache_sites_available }}/aditi-{{ env_name }}.conf"
+    mode: "0644"
+  notify: ReloadApache
+
+- name: Enable site (idempotent)
+  command: "a2ensite aditi-{{ env_name }}.conf"
+  args:
+    creates: "{{ apache_sites_enabled }}/aditi-{{ env_name }}.conf"
+  notify: ReloadApache
+
+- name: Disable default site (optional but recommended)
+  command: "a2dissite 000-default.conf"
+  args:
+    removes: "{{ apache_sites_enabled }}/000-default.conf"
+  notify: ReloadApache
+

@@ -1,0 +1,5 @@
+- name: Config setup 
+  hosts: server
+  become: yes
+  roles:
+    - errhandling

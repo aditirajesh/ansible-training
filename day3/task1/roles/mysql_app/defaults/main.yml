@@ -1,0 +1,10 @@
+db_name: app_db
+table_name: customers
+
+mysql_login_user: root
+
+# Common socket locations; we will auto-detect in tasks.
+mysql_socket_candidates:
+  - /var/lib/mysql/mysql.sock
+  - /run/mysqld/mysqld.sock
+  - /var/run/mysqld/mysqld.sock
