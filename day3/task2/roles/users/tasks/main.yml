@@ -34,7 +34,6 @@
   ansible.builtin.set_fact:
     local_public_key: "{{ lookup('file', local_public_key_path) }}"
 
-
 # Ensure .ssh directory exists with correct permissions for user2/user3
 - name: Ensure ~/.ssh exists for user2 and user3
   ansible.builtin.file:
@@ -58,7 +57,6 @@
     - user2
     - user3
 
-
 - name: Ensure authorized_keys permissions for user2 and user3
   ansible.builtin.file:
     path: "/home/{{ item }}/.ssh/authorized_keys"
@@ -78,4 +76,3 @@
     group: "{{ item }}"
     mode: "0755"
   loop: "{{ users_list }}"
-

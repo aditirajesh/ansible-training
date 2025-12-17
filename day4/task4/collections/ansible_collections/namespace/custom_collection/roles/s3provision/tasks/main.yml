@@ -1,0 +1,61 @@
+---
+# 1) Install boto3/botocore on the target EC2 instance
+- name: Install pip (Amazon Linux 2023)
+  become: true
+  ansible.builtin.dnf:
+    name: python3-pip
+    state: present
+
+- name: Install boto3 and botocore using pip (on the instance)
+  become: true
+  ansible.builtin.pip:
+    name:
+      - boto3
+      - botocore
+    executable: pip3
+    state: present
+
+# 2) Create IAM role + policy and attach it to the EC2 instance (controller-side)
+- name: Create IAM role for S3 provisioning
+  delegate_to: localhost
+  become: false
+  amazon.aws.iam_role:
+    name: "{{ s3_provision_role_name }}"
+    assume_role_policy_document: "{{ lookup('file', role_path ~ '/files/trust-ec2.json') }}"
+    state: present
+
+- name: Create/Update IAM policy for S3 provisioning
+  delegate_to: localhost
+  become: false
+  amazon.aws.iam_policy:
+    iam_type: role
+    iam_name: "{{ s3_provision_role_name }}"
+    policy_name: "{{ s3_provision_policy_name }}"
+    policy_json: "{{ lookup('file', role_path ~ '/files/s3-provision-policy.json') }}"
+    state: present
+
+- name: Create instance profile
+  delegate_to: localhost
+  become: false
+  amazon.aws.iam_instance_profile:
+    name: "{{ s3_instance_profile_name }}"
+    role: "{{ s3_provision_role_name }}"
+    state: present
+
+- name: Attach instance profile to EC2 instance
+  delegate_to: localhost
+  become: false
+  amazon.aws.ec2_instance:
+    region: "{{ aws_region }}"
+    instance_ids:
+      - "{{ target_instance_id }}"
+    iam_instance_profile: "{{ s3_instance_profile_name }}"
+    state: running
+
+
+- name: Create S3 bucket
+  amazon.aws.s3_bucket:
+    name: "{{ bucket_name }}"
+    state: present
+    region: "{{ bucket_region | default(omit) }}"
+    tags: "{{ bucket_tags | default({}) }}"

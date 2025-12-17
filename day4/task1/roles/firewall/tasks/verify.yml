@@ -1,0 +1,8 @@
+- name: Check web server locally with curl
+  ansible.builtin.command: curl -sS -I http://localhost
+  register: curl_out
+  changed_when: false
+
+- name: Show curl status line
+  ansible.builtin.debug:
+    msg: "{{ (curl_out.stdout_lines | default([]))[:1] }}"

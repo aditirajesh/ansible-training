@@ -1,0 +1,5 @@
+---
+s3_provision_role_name: "aditi-provision-role"
+s3_provision_policy_name: "aditi-provision-policy"
+s3_instance_profile_name: "aditi-provision-instance-profile"
+

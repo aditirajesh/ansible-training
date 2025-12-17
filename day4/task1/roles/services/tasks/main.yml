@@ -1,0 +1,5 @@
+- name: Include web service tasks
+  ansible.builtin.include_tasks: httpd.yml
+
+- name: Include DB service tasks
+  ansible.builtin.include_tasks: mariadb.yml

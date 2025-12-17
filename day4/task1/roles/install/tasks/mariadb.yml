@@ -1,0 +1,4 @@
+- name: Install MariaDB server (Amazon Linux 2023)
+  ansible.builtin.dnf:
+    name: mariadb105-server
+    state: present

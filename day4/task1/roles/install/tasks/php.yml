@@ -1,0 +1,6 @@
+- name: Install PHP 8.2 module stream
+  ansible.builtin.dnf:
+    name: 
+      - php
+      - php-mysqlnd
+    state: present

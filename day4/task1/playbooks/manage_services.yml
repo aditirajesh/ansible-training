@@ -1,0 +1,5 @@
+- name: Start Services 
+  hosts: server
+  become: true
+  roles:
+    - services

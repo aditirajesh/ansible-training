@@ -1,0 +1,21 @@
+---
+- name: Provision boto + IAM role/profile + create S3 bucket
+  hosts: s3_targets
+  gather_facts: true
+
+  pre_tasks:
+    - name: Get EC2 instance-id from IMDS
+      ansible.builtin.shell: |
+        TOKEN=$(curl -sS -X PUT "http://169.254.169.254/latest/api/token" \
+          -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+        curl -sS -H "X-aws-ec2-metadata-token: $TOKEN" \
+          http://169.254.169.254/latest/meta-data/instance-id
+      register: imds_instance_id
+      changed_when: false
+
+    - name: Set target_instance_id
+      ansible.builtin.set_fact:
+        target_instance_id: "{{ imds_instance_id.stdout }}"
+
+  roles:
+    - namespace.custom_collection.s3provision

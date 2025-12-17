@@ -5,3 +5,4 @@ task2-env
 *key
 *.pub
 user_access_key 
+.*
