@@ -11,7 +11,7 @@
     - name: Show inherited variables
       debug:
         msg:
-          - "environment={{ environment | default('UNDEFINED') }}"
+          - "environment={{ app_environment | default('UNDEFINED') }}"
           - "server_name={{ server_name | default('UNDEFINED') }}"
           - "port={{ port | default('UNDEFINED') }}"
 
