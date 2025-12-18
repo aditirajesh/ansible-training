@@ -1,0 +1,21 @@
+- name: Verify inventory resolution and variable inheritance
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Show basic identity
+      debug:
+        msg:
+          - "inventory_hostname={{ inventory_hostname }}"
+          - "group_names={{ group_names }}"
+
+    - name: Show inherited variables
+      debug:
+        msg:
+          - "environment={{ environment | default('UNDEFINED') }}"
+          - "server_name={{ server_name | default('UNDEFINED') }}"
+          - "port={{ port | default('UNDEFINED') }}"
+
+    - name: Show where controller thinks this host is (hostvars check)
+      debug:
+        var: hostvars[inventory_hostname]
+      tags: [verbose]
